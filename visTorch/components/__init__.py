@@ -57,8 +57,6 @@ def autoencoder(app, model, dataset, latent_options, paths, pre_process=None, pr
         id = prefix + 'latent-slider-' + str(_)
         latent_space.append(dcc.Slider(min=latent_options['min'],
                                        max=latent_options['max'],
-                                       marks={latent_options['min']: latent_options['min'],
-                                              latent_options['max']: latent_options['max']},
                                        step=latent_options['step'],
                                        updatemode='drag',
                                        id=id,
