@@ -6,7 +6,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
 from io import BytesIO
-
+from torch.autograd import Variable
 
 def _img_resize(img):
     img = img.resize((200, 200))
@@ -89,10 +89,12 @@ def autoencoder(app, model, dataset, latent_options, paths, pre_process=None, pr
         [Input(component_id=prefix + 'sample-input', component_property='n_clicks')])
     def sample_input(n_clicks):
         input_id = random.randint(0, len(dataset) - 1)
-        img, _ = dataset[input_id]
+        # img, _ = dataset[input_id]
+        img = dataset[input_id]
 
-        hx = model.encoder(img.view(-1))
-        hx = [round(_, len(str(latent_options['step']).split('.')[-1])) for _ in hx.cpu().data.numpy().tolist()]
+        # hx = model.encoder(img.view(-1))
+        hx = model.encode(Variable(torch.FloatTensor(img).unsqueeze(0)))
+        hx = [round(_, len(str(latent_options['step']).split('.')[-1])) for _ in hx[0].cpu().data.numpy().tolist()]
 
         # pre-process to get PIL image
         if pre_process is not None:
@@ -125,12 +127,12 @@ def autoencoder(app, model, dataset, latent_options, paths, pre_process=None, pr
         [Input(component_id=prefix + 'latent-slider-' + str(slider_id), component_property='value')
          for slider_id in range(latent_size)])
     def predicted_output(*latent_space):
-        hx = torch.FloatTensor(latent_space)
-        output = model.decoder(hx)
+        output = model.decode(Variable(torch.FloatTensor(latent_space).unsqueeze(0)))
 
         # pre-process to get numpy image
         if pre_process is not None:
-            img = pre_process(output.reshape(dataset[0][0].shape))
+            # img = pre_process(output.reshape(dataset[0].shape))
+            img = pre_process(output)
         img = _img_resize(img)
         # convert to img
         output = BytesIO()
@@ -147,7 +149,7 @@ def autoencoder(app, model, dataset, latent_options, paths, pre_process=None, pr
          Input(component_id=prefix + 'reload-model', component_property='n_clicks')],
         [State(component_id=prefix + 'sample-input', component_property='n_clicks')])
     def refresh_model(model_path, reload, n_clicks):
-        model.load_state_dict(torch.load(model_path))
+        model.load_state_dict(torch.load(model_path, map_location='cpu'))
         return int(n_clicks) + 1
 
     ae_div = dbc.Card(
