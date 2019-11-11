@@ -89,7 +89,7 @@ def plot_data(data_dict, plots_dir_path, env):
         plt.title(title)
         plt.ylabel(x['y_label'])
         plt.xlabel(x['x_label'])
-        plt.savefig(os.path.join(plots_dir_path, env + "_wbase" + title + ".png"))
+        plt.savefig(os.path.join(plots_dir_path, env + "_" + title + ".png"))
         plt.clf()
 
     logger.info('Plot Saved! - ' + plots_dir_path)
