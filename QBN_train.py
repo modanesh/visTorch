@@ -572,5 +572,5 @@ if __name__ == '__main__':
     optimizer = optim.Adam(conv_ox_net.parameters(), lr=1e-4, weight_decay=0)
     target_conv_ox_net = conv_ox_net
     base_image = gather_base_image(bottleneck_data_path)
-    train(conv_ox_net, obs_train_data, obs_test_data, optimizer, "./resources/pongD_deconv_obs_model_v1.p", "./data", 32, num_epoch, target_conv_ox_net, cuda=False, grad_clip=10, env=env, low=0, high=0.05, target_test_episodes=1, batch_base_background=None)
+    train(conv_ox_net, obs_train_data, obs_test_data, optimizer, "./resources/pongD_deconv_obs_model_v1.p", "./data", 32, num_epoch, target_conv_ox_net, cuda=False, grad_clip=10, env=env, low=0, high=0.05, target_test_episodes=1, base_background=None)
     # train(conv_ox_net, obs_train_data, obs_test_data, optimizer, "./resources/pongD_deconv_obs_model_v2.p", "./data", 32, num_epoch, target_conv_ox_net, cuda=False, grad_clip=10, env=env, low=0, high=0.05, target_test_episodes=1, base_background=base_image)
