@@ -257,7 +257,7 @@ def generate_bottleneck_data(net, env, episodes, save_path, cuda=False, eps=(0, 
     return hx_train_data, hx_test_data, obs_train_data, obs_test_data
 
 
-def train(net, obs_train_data, obs_test_data, optimizer, model_path, plot_dir, batch_size, epochs, target_net, cuda=False, grad_clip=None, env=None, low=0, high=0.05, target_test_episodes=1):
+def train(net, obs_train_data, obs_test_data, optimizer, model_path, plot_dir, batch_size, epochs, target_net, cuda=False, grad_clip=None, env=None, low=0, high=0.05, target_test_episodes=1, batch_base_background=None):
     """
     Train the QBN
 
@@ -297,12 +297,12 @@ def train(net, obs_train_data, obs_test_data, optimizer, model_path, plot_dir, b
 
             if cuda:
                 batch_input, target = batch_input.cuda(), target.cuda()
-            batch_output, _ = net(batch_input)
 
-            # for name, param in net.named_parameters():
-            #     if name == "conv_decoder.0.weight":
-            #         print(param)
-
+            if batch_base_background is None:
+                batch_output, _ = net(batch_input)
+            else:
+                batch_delta_output, _ = net(batch_input)
+                batch_output = batch_base_background + batch_delta_output
 
             optimizer.zero_grad()
             loss = mse_loss(batch_output, target)
@@ -347,7 +347,7 @@ def train(net, obs_train_data, obs_test_data, optimizer, model_path, plot_dir, b
             print('Stopping!')
             break
 
-    torch.save(net.state_dict(), model_path.replace("model.p", "last_model.p"))
+    torch.save(net.state_dict(), model_path.replace("pongD_gru_model.p", "last_model.p"))
 
     net.load_state_dict(torch.load(model_path))
     return net
@@ -477,6 +477,11 @@ def verbose_data_dict(test_loss, reconstruction_epoch_losses, reconstruction_bat
     return data_dict
 
 
+def gather_base_image(bottleneck_data_path):
+    hx_train_data, hx_test_data, obs_train_data, obs_test_data = pickle.loads(open(bottleneck_data_path, "rb").read())
+
+
+
 if __name__ == '__main__':
     episodes = 2
     gru_size = 32
@@ -487,20 +492,20 @@ if __name__ == '__main__':
     # bn_episodes = 1
     num_epoch = 400
     # num_epoch = 20
-    bottleneck_data_path = "./data/pongD_bottleneck_data.p"
+    bottleneck_data_path = "./resources/pongD_bottleneck_data.p"
     generate_max_steps = 10000
 
     env_name = "PongDeterministic-v4"
     env = atari_wrapper(env_name)
     obs = env.reset()
 
-    gru_net_path = "./data/pongD_gru_model.p"
+    gru_net_path = "./resources/pongD_gru_model.p"
     gru_net = GRUNet(len(obs), gru_size, int(env.action_space.n))
     gru_net.load_state_dict(torch.load(gru_net_path, map_location='cpu'))
     gru_net.noise = False
     gru_net.eval()
 
-    ox_net_path = "./data/pongD_obs_model.p"
+    ox_net_path = "./resources/pongD_obs_model.p"
     ox_net = ObsQBNet(gru_net.input_c_features, ox_size)
     ox_net.load_state_dict(torch.load(ox_net_path, map_location='cpu'))
     ox_net.eval()
@@ -562,8 +567,8 @@ if __name__ == '__main__':
             conv_ox_net.state_dict()["linear_decoder.2.bias"].data.copy_(param.data)
             conv_ox_net.linear_decoder[2].bias.requires_grad = False
 
-
-
     optimizer = optim.Adam(conv_ox_net.parameters(), lr=1e-4, weight_decay=0)
     target_conv_ox_net = conv_ox_net
-    train(conv_ox_net, obs_train_data, obs_test_data, optimizer, "./data/pongD_conv_obs_model.p", "./data", 32, num_epoch, target_conv_ox_net, cuda=False, grad_clip=None, env=env, low=0, high=0.05, target_test_episodes=1)
+    batch_base_image = gather_base_image(bottleneck_data_path)
+    train(conv_ox_net, obs_train_data, obs_test_data, optimizer, "./resources/pongD_deconv_obs_model_v1.p", "./data", 32, num_epoch, target_conv_ox_net, cuda=False, grad_clip=10, env=env, low=0, high=0.05, target_test_episodes=1, batch_base_background=None)
+    # train(conv_ox_net, obs_train_data, obs_test_data, optimizer, "./resources/pongD_deconv_obs_model_v2.p", "./data", 32, num_epoch, target_conv_ox_net, cuda=False, grad_clip=10, env=env, low=0, high=0.05, target_test_episodes=1, batch_base_background=batch_base_image)
