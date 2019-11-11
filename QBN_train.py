@@ -257,7 +257,7 @@ def generate_bottleneck_data(net, env, episodes, save_path, cuda=False, eps=(0, 
     return hx_train_data, hx_test_data, obs_train_data, obs_test_data
 
 
-def train(net, obs_train_data, obs_test_data, optimizer, model_path, plot_dir, batch_size, epochs, target_net, cuda=False, grad_clip=None, env=None, low=0, high=0.05, target_test_episodes=1, batch_base_background=None):
+def train(net, obs_train_data, obs_test_data, optimizer, model_path, plot_dir, batch_size, epochs, target_net, cuda=False, grad_clip=None, env=None, low=0, high=0.05, target_test_episodes=1, base_background=None):
     """
     Train the QBN
 
@@ -298,11 +298,11 @@ def train(net, obs_train_data, obs_test_data, optimizer, model_path, plot_dir, b
             if cuda:
                 batch_input, target = batch_input.cuda(), target.cuda()
 
-            if batch_base_background is None:
+            if base_background is None:
                 batch_output, _ = net(batch_input)
             else:
                 batch_delta_output, _ = net(batch_input)
-                batch_output = batch_base_background + batch_delta_output
+                batch_output = Variable(torch.FloatTensor(base_background)) + batch_delta_output
 
             optimizer.zero_grad()
             loss = mse_loss(batch_output, target)
@@ -479,7 +479,9 @@ def verbose_data_dict(test_loss, reconstruction_epoch_losses, reconstruction_bat
 
 def gather_base_image(bottleneck_data_path):
     hx_train_data, hx_test_data, obs_train_data, obs_test_data = pickle.loads(open(bottleneck_data_path, "rb").read())
-
+    numpied_obs = np.array(obs_train_data)
+    avg_base = np.mean(numpied_obs, axis=0)
+    return avg_base.tolist()
 
 
 if __name__ == '__main__':
@@ -569,6 +571,6 @@ if __name__ == '__main__':
 
     optimizer = optim.Adam(conv_ox_net.parameters(), lr=1e-4, weight_decay=0)
     target_conv_ox_net = conv_ox_net
-    batch_base_image = gather_base_image(bottleneck_data_path)
-    train(conv_ox_net, obs_train_data, obs_test_data, optimizer, "./resources/pongD_deconv_obs_model_v1.p", "./data", 32, num_epoch, target_conv_ox_net, cuda=False, grad_clip=10, env=env, low=0, high=0.05, target_test_episodes=1, batch_base_background=None)
-    # train(conv_ox_net, obs_train_data, obs_test_data, optimizer, "./resources/pongD_deconv_obs_model_v2.p", "./data", 32, num_epoch, target_conv_ox_net, cuda=False, grad_clip=10, env=env, low=0, high=0.05, target_test_episodes=1, batch_base_background=batch_base_image)
+    base_image = gather_base_image(bottleneck_data_path)
+    # train(conv_ox_net, obs_train_data, obs_test_data, optimizer, "./resources/pongD_deconv_obs_model_v1.p", "./data", 32, num_epoch, target_conv_ox_net, cuda=False, grad_clip=10, env=env, low=0, high=0.05, target_test_episodes=1, batch_base_background=None)
+    train(conv_ox_net, obs_train_data, obs_test_data, optimizer, "./resources/pongD_deconv_obs_model_v2.p", "./data", 32, num_epoch, target_conv_ox_net, cuda=False, grad_clip=10, env=env, low=0, high=0.05, target_test_episodes=1, base_background=base_image)
