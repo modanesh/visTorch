@@ -292,8 +292,8 @@ def train(net, obs_train_data, obs_test_data, optimizer, model_path, plot_dir, b
             batch_input = train_data[b_i:b_i + batch_size]
             # input = train_data[t_i]
             target = Variable(torch.FloatTensor(batch_input))
-            batch_input = torch.FloatTensor(batch_input)
-            # batch_input = Variable(batch_input, requires_grad=True)
+            # batch_input = torch.FloatTensor(batch_input)
+            batch_input = Variable(torch.FloatTensor(batch_input), requires_grad=True)
 
             if cuda:
                 batch_input, target = batch_input.cuda(), target.cuda()
@@ -483,10 +483,10 @@ if __name__ == '__main__':
     bhx_size = 64
     ox_size = 100
     input_c_features = 8 * 5 * 5
-    # bn_episodes = 10
-    bn_episodes = 1
-    # num_epoch = 400
-    num_epoch = 20
+    bn_episodes = 10
+    # bn_episodes = 1
+    num_epoch = 400
+    # num_epoch = 20
     bottleneck_data_path = "./data/pongD_bottleneck_data.p"
     generate_max_steps = 10000
 
@@ -503,29 +503,66 @@ if __name__ == '__main__':
     ox_net_path = "./data/pongD_obs_model.p"
     ox_net = ObsQBNet(gru_net.input_c_features, ox_size)
     ox_net.load_state_dict(torch.load(ox_net_path, map_location='cpu'))
-    gru_net.eval()
+    ox_net.eval()
 
     conv_ox_net = ConvObsQBNet(len(obs), ox_size)
 
     hx_train_data, hx_test_data, obs_train_data, obs_test_data = generate_bottleneck_data(gru_net, env, bn_episodes, bottleneck_data_path, cuda=False, eps=(0, 0.3), max_steps=generate_max_steps)
 
+
+    for name, param in gru_net.state_dict().items():
+        if name == "conv1.weight":
+            conv_ox_net.state_dict()["conv_encoder.0.weight"].data.copy_(param.data)
+            conv_ox_net.conv_encoder[0].weight.requires_grad = False
+        elif name == "conv1.bias":
+            conv_ox_net.state_dict()["conv_encoder.0.bias"].data.copy_(param.data)
+            conv_ox_net.conv_encoder[0].bias.requires_grad = False
+        elif name == "conv2.weight":
+            conv_ox_net.state_dict()["conv_encoder.2.weight"].data.copy_(param.data)
+            conv_ox_net.conv_encoder[2].weight.requires_grad = False
+        elif name == "conv2.bias":
+            conv_ox_net.state_dict()["conv_encoder.2.bias"].data.copy_(param.data)
+            conv_ox_net.conv_encoder[2].bias.requires_grad = False
+        elif name == "conv3.weight":
+            conv_ox_net.state_dict()["conv_encoder.4.weight"].data.copy_(param.data)
+            conv_ox_net.conv_encoder[4].weight.requires_grad = False
+        elif name == "conv3.bias":
+            conv_ox_net.state_dict()["conv_encoder.4.bias"].data.copy_(param.data)
+            conv_ox_net.conv_encoder[4].bias.requires_grad = False
+        elif name == "conv4.weight":
+            conv_ox_net.state_dict()["conv_encoder.6.weight"].data.copy_(param.data)
+            conv_ox_net.conv_encoder[6].weight.requires_grad = False
+        elif name == "conv4.bias":
+            conv_ox_net.state_dict()["conv_encoder.6.bias"].data.copy_(param.data)
+            conv_ox_net.conv_encoder[6].bias.requires_grad = False
+
     for name, param in ox_net.state_dict().items():
         if name == "encoder.0.weight":
-            conv_ox_net.state_dict()["linear_encoder.0.weight"].data = param
+            conv_ox_net.state_dict()["linear_encoder.0.weight"].data.copy_(param.data)
+            conv_ox_net.linear_encoder[0].weight.requires_grad = False
         elif name == "encoder.0.bias":
-            conv_ox_net.state_dict()["linear_encoder.0.bias"].data = param
+            conv_ox_net.state_dict()["linear_encoder.0.bias"].data.copy_(param.data)
+            conv_ox_net.linear_encoder[0].bias.requires_grad = False
         elif name == "encoder.2.weight":
-            conv_ox_net.state_dict()["linear_encoder.2.weight"].data = param
+            conv_ox_net.state_dict()["linear_encoder.2.weight"].data.copy_(param.data)
+            conv_ox_net.linear_encoder[2].weight.requires_grad = False
         elif name == "encoder.2.bias":
-            conv_ox_net.state_dict()["linear_encoder.2.bias"].data = param
+            conv_ox_net.state_dict()["linear_encoder.2.bias"].data.copy_(param.data)
+            conv_ox_net.linear_encoder[2].bias.requires_grad = False
         elif name == "decoder.0.weight":
-            conv_ox_net.state_dict()["linear_decoder.0.weight"].data = param
+            conv_ox_net.state_dict()["linear_decoder.0.weight"].data.copy_(param.data)
+            conv_ox_net.linear_decoder[0].weight.requires_grad = False
         elif name == "decoder.0.bias":
-            conv_ox_net.state_dict()["linear_decoder.0.bias"].data = param
+            conv_ox_net.state_dict()["linear_decoder.0.bias"].data.copy_(param.data)
+            conv_ox_net.linear_decoder[0].bias.requires_grad = False
         elif name == "decoder.2.weight":
-            conv_ox_net.state_dict()["linear_decoder.2.weight"].data = param
+            conv_ox_net.state_dict()["linear_decoder.2.weight"].data.copy_(param.data)
+            conv_ox_net.linear_decoder[2].weight.requires_grad = False
         elif name == "decoder.2.bias":
-            conv_ox_net.state_dict()["linear_decoder.2.bias"].data = param
+            conv_ox_net.state_dict()["linear_decoder.2.bias"].data.copy_(param.data)
+            conv_ox_net.linear_decoder[2].bias.requires_grad = False
+
+
 
     optimizer = optim.Adam(conv_ox_net.parameters(), lr=1e-4, weight_decay=0)
     target_conv_ox_net = conv_ox_net
