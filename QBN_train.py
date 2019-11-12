@@ -490,10 +490,10 @@ if __name__ == '__main__':
     bhx_size = 64
     ox_size = 100
     input_c_features = 8 * 5 * 5
-    bn_episodes = 10
-    # bn_episodes = 1
-    num_epoch = 400
-    # num_epoch = 20
+    # bn_episodes = 10
+    bn_episodes = 1
+    # num_epoch = 400
+    num_epoch = 20
     bottleneck_data_path = "./resources/pongD_bottleneck_data.p"
     generate_max_steps = 10000
 
@@ -540,5 +540,5 @@ if __name__ == '__main__':
     optimizer = optim.Adam(conv_ox_net.parameters(), lr=1e-4, weight_decay=0)
     target_conv_ox_net = conv_ox_net
     base_image = gather_base_image(bottleneck_data_path)
-    train(conv_ox_net, obs_train_data, obs_test_data, optimizer, "./resources/pongD_deconv_obs_model_v1.p", "./data", 32, num_epoch, target_conv_ox_net, cuda=False, grad_clip=10, env=env, low=0, high=0.05, target_test_episodes=1, base_background=None)
+    train(conv_ox_net, obs_train_data, obs_test_data, optimizer, "./resources/pongD_deconv_obs_model_v1.p", "./data", 32, num_epoch, target_conv_ox_net, cuda=False, grad_clip=None, env=env, low=0, high=0.05, target_test_episodes=1, base_background=None)
     # train(conv_ox_net, obs_train_data, obs_test_data, optimizer, "./resources/pongD_deconv_obs_model_v2.p", "./data", 32, num_epoch, target_conv_ox_net, cuda=False, grad_clip=10, env=env, low=0, high=0.05, target_test_episodes=1, base_background=base_image)
