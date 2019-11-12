@@ -94,7 +94,7 @@ ox_size = 100
 input_c_features = 8 * 5 * 5
 eps = (0, 0)
 # hx_ae_model = HxQBNet(gru_size, bhx_size)
-ox_ae_best_path = "./resources/pongD_conv_obs_model.p"
+ox_ae_best_path = "./resources/pongD_deconv_obs_model_v1.p"
 
 env_name = "PongDeterministic-v4"
 env = atari_wrapper(env_name)

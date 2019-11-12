@@ -503,13 +503,13 @@ if __name__ == '__main__':
 
     gru_net_path = "./resources/pongD_gru_model.p"
     gru_net = GRUNet(len(obs), gru_size, int(env.action_space.n))
-    gru_net.load_state_dict(torch.load(gru_net_path, map_location='cpu'))
+    gru_net.load_state_dict(torch.load(gru_net_path))
     gru_net.noise = False
     gru_net.eval()
 
     ox_net_path = "./resources/pongD_obs_model.p"
     ox_net = ObsQBNet(gru_net.input_c_features, ox_size)
-    ox_net.load_state_dict(torch.load(ox_net_path, map_location='cpu'))
+    ox_net.load_state_dict(torch.load(ox_net_path))
     ox_net.eval()
 
     conv_ox_net = ConvObsQBNet(len(obs), ox_size)
