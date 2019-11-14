@@ -95,16 +95,6 @@ class ConvObsQBNet(nn.Module):
                                      nn.Conv2d(16, 8, 3, stride=2, padding=1),
                                      nn.ReLU6())
 
-        self.linear_encoder = nn.Sequential(nn.Linear(self.qbn_input_size, f1),
-                                     nn.Tanh(),
-                                     nn.Linear(f1, x_features),
-                                     TernaryTanh())
-
-        self.linear_decoder = nn.Sequential(nn.Linear(x_features, f1),
-                                     nn.Tanh(),
-                                     nn.Linear(f1, self.qbn_input_size),
-                                     nn.ReLU6())
-
         self.conv_decoder = nn.Sequential(nn.ConvTranspose2d(8, 16, 3, stride=2, padding=1, output_padding=1),
                                      nn.ReLU(),
                                      nn.ConvTranspose2d(16, 32, 3, stride=2, padding=1, output_padding=1),
@@ -117,32 +107,18 @@ class ConvObsQBNet(nn.Module):
 
     def forward(self, x):
         conv_encoded = self.conv_encoder(x)
-        linear_encoder_input = torch.reshape(conv_encoded, (x.shape[0], self.qbn_input_size))
-        linear_encoded = self.linear_encoder(linear_encoder_input)
-        linear_decoded = self.linear_decoder(linear_encoded)
-        conv_decoder_input = torch.reshape(linear_decoded, (x.shape[0], 8, 5, 5))
-        conv_decoded = self.conv_decoder(conv_decoder_input.detach())
-        return conv_decoded, linear_encoded
-
-    def encode(self, x):
-        conv_encoded = self.conv_encoder(x)
-        linear_encoder_input = conv_encoded.view(-1, self.qbn_input_size)
-        linear_encoded = self.linear_encoder(linear_encoder_input)
-        return linear_encoded
-
-    def decode(self, x):
-        linear_decoded = self.linear_decoder(x)
-        conv_decoder_input = torch.reshape(linear_decoded, (1, 8, 5, 5))
-        conv_decoded = self.conv_decoder(conv_decoder_input)
+        conv_decoded = self.conv_decoder(conv_encoded.detach())
         return conv_decoded
 
     def init_hidden(self, batch_size=1):
         return torch.zeros(batch_size, self.gru_units)
 
+
 class ObsQBNet(nn.Module):
     """
     Quantized Bottleneck Network(QBN) for observation features.
     """
+
     def __init__(self, input_size, x_features):
         super(ObsQBNet, self).__init__()
         self.bhx_size = x_features
@@ -293,7 +269,7 @@ def train(net, obs_train_data, obs_test_data, optimizer, model_path, plot_dir, b
                 batch_input, target = batch_input.cuda(), target.cuda()
 
             if base_background is None:
-                batch_output, _ = net(batch_input)
+                batch_output = net(batch_input)
             else:
                 batch_delta_output, _ = net(batch_input)
                 batch_output = Variable(torch.FloatTensor(base_background)) + batch_delta_output
@@ -372,7 +348,7 @@ def test(net, data, batch_size, cuda=False):
             target = Variable(torch.FloatTensor(input))
             if cuda:
                 target, input = target.cuda(), input.cuda()
-            batch_output, _ = net(input)
+            batch_output = net(input)
             loss = mse_loss(batch_output, target)
             batch_losses.append(float(loss.item()))
 
@@ -521,18 +497,8 @@ if __name__ == '__main__':
         elif name == "conv4.weight":
             conv_ox_net.conv_encoder[6].load_state_dict(gru_net.conv4.state_dict())
 
-    for name, param in ox_net.state_dict().items():
-        if name == "encoder.0.weight":
-            conv_ox_net.linear_encoder[0].load_state_dict(ox_net.encoder[0].state_dict())
-        elif name == "encoder.2.weight":
-            conv_ox_net.linear_encoder[2].load_state_dict(ox_net.encoder[2].state_dict())
-        elif name == "decoder.0.weight":
-            conv_ox_net.linear_decoder[0].load_state_dict(ox_net.decoder[0].state_dict())
-        elif name == "decoder.2.weight":
-            conv_ox_net.linear_decoder[2].load_state_dict(ox_net.decoder[2].state_dict())
-
     optimizer = optim.Adam(conv_ox_net.parameters(), lr=1e-4, weight_decay=0)
     target_conv_ox_net = conv_ox_net
     base_image = gather_base_image(bottleneck_data_path)
-    train(conv_ox_net, obs_train_data, obs_test_data, optimizer, "./resources/pongD_deconv_obs_model_v1.p", "./data", 32, num_epoch, target_conv_ox_net, cuda=False, grad_clip=None, env=env, low=0, high=0.05, target_test_episodes=1, base_background=None)
+    train(conv_ox_net, obs_train_data, obs_test_data, optimizer, "./resources/pongD_deconv_obs_model_noqbn.p", "./data", 32, num_epoch, target_conv_ox_net, cuda=False, grad_clip=None, env=env, low=0, high=0.05, target_test_episodes=1, base_background=None)
     # train(conv_ox_net, obs_train_data, obs_test_data, optimizer, "./resources/pongD_deconv_obs_model_v2.p", "./data", 32, num_epoch, target_conv_ox_net, cuda=False, grad_clip=10, env=env, low=0, high=0.05, target_test_episodes=1, base_background=base_image)
